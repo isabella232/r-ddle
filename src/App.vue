@@ -1,12 +1,19 @@
 <template>
   <div id="app">
+    <ae-header name="Ræddle">
+      <span style="color: white">
+        <a :href="etherscan" target="_blank">
+          <ae-identity-avatar :address="'account'"></ae-identity-avatar>
+        </a>
+      </span>
+    </ae-header>
     <div class="riddles">
       <form @submit.prevent="askRiddle">
         <input v-model="question" placeholder="Ask a riddle...">
         <input v-model="answer" placeholder="What's the answer?">
-        <input :value="hashedAnswer" placeholder="Here's the hashed answer" readonly="true">
-        <input v-model="reward" type="number" placeholder="What's the reward?">
-        <input type="submit" value="submit">
+<!--         <input :value="hashedAnswer" placeholder="Here's the hashed answer" readonly="true"> -->
+        <label class="eth-input"><input v-model="reward" type="number" placeholder="What's the reward?"></label>
+        <ae-button type="dramatic">Submit</ae-button>
       </form>
       <riddle 
       :riddle-contract="riddleContract" 
@@ -23,13 +30,14 @@
 </template>
 
 <script>
+import {AeHeader, AeButton, AeIdentityAvatar} from '@aeternity/aepp-components'
 import Riddle from '@/components/Riddle'
 import RiddleContract from '../dapp-scratch-wrapper/RiddleContract/index.js'
 import utils from 'web3-utils'
 
 export default {
   name: 'app',
-  components: {Riddle},
+  components: {Riddle, AeHeader, AeButton, AeIdentityAvatar},
   data () {
     return {
       riddleContract: null,
@@ -37,10 +45,26 @@ export default {
       answer: null,
       reward: null,
       loading: false,
-      riddles: []
+      riddles: [],
+      account: null,
+      networkId: null
     }
   },
   computed: {
+    etherscan () {
+      switch (this.network) {
+        case (1):
+          return 'https://etherscan.io/address/' + this.account
+        case (4):
+          return 'https://rinkeby.etherscan.io/address/' + this.account
+        case (42):
+          return 'https://kovan.etherscan.io/address/' + this.account
+        case (5777):
+          return '#'
+        default:
+          return '#'
+      }
+    },
     hashedAnswer () {
       console.log('calc')
       return this.answer && utils.sha3(this.answer)
@@ -49,14 +73,19 @@ export default {
   mounted () {
     this.riddleContract = new RiddleContract()
     this.riddleContract.bind('networkChange', () => {
+      this.networkId = this.riddleContract.network
       return this.getAllRiddles()
+    })
+    this.riddleContract.bind('accountChange', () => {
+      this.account = this.riddleContract.account
     })
   },
   methods: {
     timeOutReload () {
+      console.log('timeoutreload')
       setTimeout(() => {
         this.getAllRiddles()
-      }, 1000)
+      }, 3000)
     },
     loadEvent (loading) {
       this.loading = loading
@@ -108,14 +137,39 @@ body {
     box-sizing: border-box;;
 }
 #app {
-  max-width: 480px;
-  margin:auto;
-  form {
+  .riddles {
+    max-width: 480px;
+    margin:auto;
+  }
+  .eth-input {
+    position: relative;
+    display: block;
+    &:before {
+      content: 'ETH';
+      position: absolute;
+      right:10px;
+      top:0px;
+      line-height:26px;
+    }
+  }
+  button {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .riddles {
+
+
+   > form {
+      padding:10px;
+      padding-bottom:30px;
+
+    }
     input {
       display: block;
       width:100%;
-      margin:5px;
       padding:5px;
+      margin-bottom:10px;
     }
   }
   > small {

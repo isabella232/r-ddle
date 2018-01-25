@@ -11,7 +11,7 @@ class RiddleContract {
   constructor (options) {
 
     this.RiddleContract = null
-
+    this.network = null
     this.pollingInterval = null
     this.account = null
     this.unlocked = false
@@ -149,9 +149,11 @@ class RiddleContract {
       if (accounts.length && this.account !== accounts[0]) {
         this.unlocked = true
         this.account = accounts[0]
+        this.trigger('accountChange')
       } else if (!accounts.length) {
         this.unlocked = false
         this.account = null
+        this.trigger('accountChange')
       }
     })
   }
