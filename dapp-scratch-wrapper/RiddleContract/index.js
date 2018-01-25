@@ -24,7 +24,7 @@ class RiddleContract {
     this.RiddleContract = null
     this.AeternityToken = null
     this.AEAddresses = {
-      5777: '0x6f1ddb36567854845e010ea0c5b9cb49d9b23c2e',
+      5777: '0x0d0aebd3f51b8a4b10cdcf6c248ea548f5012c23',
       42: '0x35d8830ea35e6Df033eEdb6d5045334A4e34f9f9',
       1: '0x5ca9a71b1d01849c0a95490cc00559717fcf0d1d'
     }
@@ -105,7 +105,7 @@ class RiddleContract {
     this.getGenesisBlock()
     .then(() => {
       this.check()
-      // this.pollingInterval = setInterval(this.check.bind(this), 1000)
+      this.pollingInterval = setInterval(this.check.bind(this), 1000)
     })
     .catch((err) => {
       throw new Error(err)
@@ -114,7 +114,9 @@ class RiddleContract {
 
   check () {
     this.checkNetwork()
-    .then(this.checkAccount.bind(this))
+    .then(() => {
+      return this.checkAccount()
+    })
     .catch((error) => {
       console.error(error)
       throw new Error(error)
@@ -122,21 +124,22 @@ class RiddleContract {
   }
 
   checkNetwork () {
-    console.log('check network')
     return new Promise((resolve, reject) => {
       if (!global.web3) return reject()
       global.web3.eth.net.getId((err, netId) => {
-        console.log(netId)
         if (err) {
-          reject(new Error(err))
+          return reject(new Error(err))
         } else if (this.network !== netId) {
           this.network = netId
           return this.deployContract().then(() => {
             this.trigger('networkChange');
-            resolve()
+            return resolve()
           }).catch((err) => {
             console.log(err)
+            return reject(new Error(err))
           })
+        } else {
+          return resolve()
         }
       })
     })
@@ -145,7 +148,6 @@ class RiddleContract {
   }
 
   deployContract () {
-    console.log('????')
     return new Promise ((resolve, reject) => {
       if (!this.address && this.network && RiddleContractArtifacts.networks[this.network]) {
         this.address = RiddleContractArtifacts.networks[this.network].address
@@ -165,7 +167,6 @@ class RiddleContract {
   }
 
   checkAccount () {
-    console.log('checkAccount')
     return global.web3.eth.getAccounts((error, accounts) => {
       if (error) throw new Error(error)
       if (accounts.length && this.account !== accounts[0]) {
@@ -242,7 +243,6 @@ class RiddleContract {
   getRiddleCount () {
     return this.RiddleContract.methods.getRiddleCount().call()
       .then((resp) => {
-      console.log(resp)
       return resp
     }).catch((err) => {
       console.error(err)
@@ -284,9 +284,6 @@ class RiddleContract {
     .then((resp) => {
       this.loading = false
       console.log(resp)
-      setTimeout(() => {
-        this.checkAccount()
-      }, 2000)
       return resp
     }).catch((err) => {
       this.loading = false
@@ -306,9 +303,6 @@ class RiddleContract {
     .then((resp) => {
       this.loading = false
       console.log(resp)
-      setTimeout(() => {
-        this.checkAccount()
-      }, 2000)
       return resp
     }).catch((err) => {
       this.loading = false
@@ -326,9 +320,6 @@ class RiddleContract {
     .then((resp) => {
       this.loading = false
       console.log(resp)
-      setTimeout(() => {
-        this.checkAccount()
-      }, 2000)
       return resp
     }).catch((err) => {
       this.loading = false

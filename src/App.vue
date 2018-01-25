@@ -167,7 +167,10 @@ export default {
       return this.riddleContract.getRiddleAtHash(qa).then((riddle) => {
         if (!riddle.exists) {
           return this.riddleContract.askRiddle(this.question, this.hashedAnswer, this.reward).then(() => {
-            return this.getAllRiddles()
+            this.question = null
+            this.answer = null
+            this.reward = 0
+            setTimeout(this.getAllRiddles, 3000)
           }).catch((error) => {
             console.log(error)
             alert('sorry')
