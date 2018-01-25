@@ -1,8 +1,14 @@
 pragma solidity ^0.4.17;
 
+import 'installed_contracts/zeppelin/contracts/token/ERC20.sol';
+
 contract RiddleContract {
 
-  function RiddleContract() public {}
+  ERC20 token;
+
+  function RiddleContract(address tokenAddress) public {
+    token = ERC20(tokenAddress);
+  }
 
   /* ---------- */
 
@@ -74,12 +80,13 @@ contract RiddleContract {
 
   /* ---------- */
 
-  function askRiddle(string question, bytes32 answerHash) public payable {
-    if (msg.value == 0) revert();
+  function askRiddle(string question, bytes32 answerHash, uint256 value) public {
     bytes32 qa = keccak256(question, answerHash);
     if (riddles[qa].exists) revert();
+    if (value == 0) revert();
+    if (!token.transferFrom(msg.sender, address(this), value)) revert();
     riddles[qa].exists = true;
-    riddles[qa].reward = msg.value ;
+    riddles[qa].reward = value;
     riddles[qa].asker = msg.sender;
     riddles[qa].question = question;
     riddleKeys.push(qa);
@@ -93,7 +100,8 @@ contract RiddleContract {
     riddles[qa].solved = true;
     riddles[qa].solver = msg.sender;
     riddles[qa].answer = answer;
-    if (!msg.sender.send(riddles[qa].reward)) revert();
+
+    if (!token.transfer(msg.sender, riddles[qa].reward)) revert();
     Riddle storage riddle = riddles[qa];
     Solved(
       riddle.question, 

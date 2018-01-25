@@ -1,10 +1,15 @@
 var RiddleContract = artifacts.require("RiddleContract");
+var MintableToken = artifacts.require("MintableToken");
+
 var utils = require('web3-utils')
 contract('RiddleContract', function(accounts) {
     let riddle;
 
     beforeEach(async function() { 
-        riddle = await RiddleContract.new();
+        erc20 = await MintableToken.new();
+        await erc20.mint(accounts[0], 100000000000000000000)
+        await erc20.mint(accounts[1], 100000000000000000000)
+        riddle = await RiddleContract.new(erc20.address);
     });
     
     describe("contract pure function", function() {
@@ -15,16 +20,29 @@ contract('RiddleContract', function(accounts) {
             assert.equal(answerHash, contractHash);
         });
     });
+    describe("approving token", function () {
+        it("should update allowance", async function () {
+            const amount  = 1000
+            var tx = await erc20.approve(riddle.address, amount)
+            var allowed = await erc20.allowance(accounts[0], riddle.address)
+            assert.equal(allowed.toNumber(), amount);
+        })
+    })
     describe("adding a riddle", function() {
         it("should change riddle count", async function() {
 
             const question = 'I am a container with no sides and no lid, yet golden treasure lays inside. What am I?'
             const answer = 'An Egg.'
             const answerHash = utils.sha3(answer)
-
+            const amount = 1000
             var initialRiddleCount = await riddle.getRiddleCount()
             assert.equal(initialRiddleCount.toNumber(), 0);
-            await riddle.askRiddle(question, answerHash, {from: accounts[0], value: 1000})
+
+            const myBalance = await erc20.balanceOf(accounts[0])
+            assert.equal(myBalance.toNumber(), 100000000000000000000);
+
+            var tx = await erc20.approve(riddle.address, amount)
+            await riddle.askRiddle(question, answerHash, amount)
             const subsequentRiddleCount = await riddle.getRiddleCount();
             assert.equal(subsequentRiddleCount.toNumber(), 1);
         });
@@ -34,12 +52,15 @@ contract('RiddleContract', function(accounts) {
             const question = 'I am a container with no sides and no lid, yet golden treasure lays inside. What am I?'
             const answer = 'An Egg.'
             const answerHash = utils.sha3(answer)
+            const amount = 1000
 
-            await riddle.askRiddle(question, answerHash, {from: accounts[0], value: 1000})
+            await erc20.approve(riddle.address, amount)
+            await riddle.askRiddle(question, answerHash, amount)
             var riddleCount = await riddle.getRiddleCount();
             assert.equal(riddleCount.toNumber(), 1);
 
-            var tx = await riddle.askRiddle(question, answerHash, {from: accounts[0], value: 1000})
+            await erc20.approve(riddle.address, amount)
+            var tx = await riddle.askRiddle(question, answerHash, amount)
             assert.equal(utils.toBN(tx.receipt.status).toNumber(), 0);
 
             const subsequentRiddleCount = await riddle.getRiddleCount();
@@ -51,8 +72,8 @@ contract('RiddleContract', function(accounts) {
             const answer = 'An Egg.'
             const answerHash = utils.sha3(answer)
             const amount = 0
-            var tx = await askQuestion(question, answerHash, amount)
-
+            await erc20.approve(riddle.address, amount)
+            var tx = await riddle.askRiddle(question, answerHash, amount)
             assert.equal(utils.toBN(tx.receipt.status).toNumber(), 0);
         })
 
@@ -61,6 +82,7 @@ contract('RiddleContract', function(accounts) {
             const answer = 'An Egg.'
             const amount = 1000
             const answerHash = utils.sha3(answer)
+            await erc20.approve(riddle.address, amount)
             var tx = await askQuestion(question, answerHash, amount)
             
             var riddleReturn = await riddle.getRiddleAtKey(0)
@@ -69,14 +91,13 @@ contract('RiddleContract', function(accounts) {
         })
 
         it("should return the same riddle by hash", async function() {
-            var question = 'I am a container with no sides and no lid, yet golden treasure lays inside. What am I?'
+            const question = 'I am a container with no sides and no lid, yet golden treasure lays inside. What am I?'
             const answer = 'An Egg.'
             const amount = 1000
             const answerHash = utils.sha3(answer)
-
             const qa = utils.soliditySha3(question, answerHash)
+            await erc20.approve(riddle.address, amount)
             var tx = await askQuestion(question, answerHash, amount)
-            
             var riddleReturn = await riddle.getRiddleAtHash(qa)
             riddleEquals(question, answer, amount, riddleReturn)
         })
@@ -89,8 +110,8 @@ contract('RiddleContract', function(accounts) {
             const answer = 'An Egg.'
             const answerHash = utils.sha3(answer)
             const amount = 1000
-
-            await riddle.askRiddle(question, answerHash, {from: accounts[0], value: amount})
+            await erc20.approve(riddle.address, amount)
+            await riddle.askRiddle(question, answerHash, amount)
             await riddle.answerRiddle(question, answer, {from: accounts[1]})
 
             var riddleReturn = await riddle.getRiddleAtKey(0)
@@ -103,16 +124,14 @@ contract('RiddleContract', function(accounts) {
             const answerHash = utils.sha3(answer)
             const amount = 10000000000000000
 
-            await riddle.askRiddle(question, answerHash, {from: accounts[0], value: amount})
+            await erc20.approve(riddle.address, amount)
+            await riddle.askRiddle(question, answerHash, amount)
 
-            const preBalance = web3.eth.getBalance(accounts[1])
-
+            const preBalance = await erc20.balanceOf(accounts[1])
             var tx = await riddle.answerRiddle(question, answer, {from: accounts[1]})
 
-            const gasPrice = 100000000000
-            const gasUsed = tx.receipt.gasUsed * gasPrice
-            const postBalance = web3.eth.getBalance(accounts[1])
-            assert.equal(preBalance.add(amount).minus(gasUsed).toNumber(), postBalance.toNumber())
+            const postBalance = await erc20.balanceOf(accounts[1])
+            assert.equal(preBalance.add(amount).toNumber(), postBalance.toNumber())
         });
     })
 
@@ -143,6 +162,6 @@ contract('RiddleContract', function(accounts) {
 
     async function askQuestion (question, answerHash, amount) {
 
-        return await riddle.askRiddle(question, answerHash, {from: accounts[0], value: amount})
+        return await riddle.askRiddle(question, answerHash, amount)
     }
 });

@@ -1,5 +1,6 @@
 
 import RiddleContractArtifacts from '../../build/contracts/RiddleContract.json'
+import ERC20 from '../../build/contracts/ERC20.json'
 
 import Web3 from 'web3'
 const BN = Web3.utils.BN
@@ -16,8 +17,17 @@ class RiddleContract {
     this.account = null
     this.unlocked = false
     this.balanceWei = 0
+    this.allowed = 0
     this.balance = 0
-    this.address = null
+    this.balanceAE = 0
+    this.address = '0x4cd493f13b922415ee21c03767d2ae1e07344c4c'
+
+    this.AEAddresses = {
+      5777: '0x6f1ddb36567854845e010ea0c5b9cb49d9b23c2e',
+      42: '0x35d8830ea35e6Df033eEdb6d5045334A4e34f9f9',
+      1: '0x5ca9a71b1d01849c0a95490cc00559717fcf0d1d'
+    }
+
     this.genesisBlock = 0
     this.loading = false
     this.options = {
@@ -132,13 +142,13 @@ class RiddleContract {
 
   deployContract () {
     return new Promise ((resolve, reject) => {
-      console.log(this.network, RiddleContractArtifacts.networks)
       if (!this.address && this.network && RiddleContractArtifacts.networks[this.network]) {
         this.address = RiddleContractArtifacts.networks[this.network].address
       } else if (!this.address) {
          return reject(new Error('Please provide a contract address'))
       }
       this.RiddleContract = new global.web3.eth.Contract(RiddleContractArtifacts.abi, this.address)
+      this.ERC20 = new global.web3.eth.Contract(ERC20.abi, this.AEAddresses[this.network])
       resolve()
     })
   }
@@ -154,6 +164,22 @@ class RiddleContract {
         this.unlocked = false
         this.account = null
         this.trigger('accountChange')
+      }
+      if (this.ERC20) {
+        return this.ERC20.methods.balanceOf(this.account).call().then((balance) => {
+          console.log(balance)
+          if (balance !== this.balanceAE) {
+            this.balanceAE = balance
+            this.trigger('balanceChange')
+          }
+          return this.ERC20.methods.allowance(this.account, this.address).call().then((allowed) => {
+            console.log(allowed)
+            if (allowed !== this.allowed) {
+              this.allowed = allowed
+              this.trigger('allowedChange')
+            }
+          })
+        })
       }
     })
   }
@@ -233,11 +259,10 @@ class RiddleContract {
    *
    */
 
-  askRiddle (question, answerHash, reward) {
-    reward = Web3.utils.toWei(reward)
-    console.log(question, answerHash, reward)
+   approve (amount) {
+    amount = Web3.utils.toWei(Web3.utils.toBN(amount))
     if (!this.account) return new Error('Unlock Wallet')
-    return this.RiddleContract.methods.askRiddle(question, answerHash).send({from: this.account, value: reward})
+    return this.ERC20.methods.approve(this.address, amount).send({from: this.account})
     .on('transactionHash', (hash) => {
       console.log(hash)
       this.loading = true
@@ -245,6 +270,31 @@ class RiddleContract {
     .then((resp) => {
       this.loading = false
       console.log(resp)
+      setTimeout(() => {
+        this.checkAccount()
+      }, 2000)
+      return resp
+    }).catch((err) => {
+      this.loading = false
+      console.error(err)
+    })
+   }
+
+  askRiddle (question, answerHash, reward) {
+    reward = Web3.utils.toWei(Web3.utils.toBN(reward))
+    console.log(question, answerHash, reward)
+    if (!this.account) return new Error('Unlock Wallet')
+    return this.RiddleContract.methods.askRiddle(question, answerHash, reward).send({from: this.account})
+    .on('transactionHash', (hash) => {
+      console.log(hash)
+      this.loading = true
+    })
+    .then((resp) => {
+      this.loading = false
+      console.log(resp)
+      setTimeout(() => {
+        this.checkAccount()
+      }, 2000)
       return resp
     }).catch((err) => {
       this.loading = false
@@ -262,6 +312,9 @@ class RiddleContract {
     .then((resp) => {
       this.loading = false
       console.log(resp)
+      setTimeout(() => {
+        this.checkAccount()
+      }, 2000)
       return resp
     }).catch((err) => {
       this.loading = false

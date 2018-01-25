@@ -3,11 +3,18 @@
     <h2>Q: {{riddle.question}}</h2>
     <template v-if="riddle.solved">
       <h3>A: {{riddle.answer}}</h3>
-      <small>Answered by {{riddle.solver}} for {{toEth(riddle.reward)}} ETH</small>
+      <small>Answered by {{riddle.solver}} for {{toEth(riddle.reward)}} Æ</small>
     </template>
     <form v-else @submit.prevent="answerRiddle()">
-      <h3>Reward: {{toEth(riddle.reward)}}Ξ</h3>
-      <input v-model="answer" placeholder="Do you have an answer?">
+      <h3>Reward: {{toEth(riddle.reward)}} Æ</h3>
+      <ae-label >
+         Do you have an answer?:
+      </ae-label>
+      <br>
+      <div class="inputWrapper">
+        <textarea v-model="answer" />
+      </div>
+      <br>
       <ae-button type="exciting" size="small">Submit</ae-button>
     </form>
   </div>
@@ -15,13 +22,13 @@
 
 <script>
 import utils from 'web3-utils'
-import {AeButton} from '@aeternity/aepp-components'
+import {AeLabel, AeButton} from '@aeternity/aepp-components'
 
 export default {
 
   name: 'Riddle',
   props: ['riddle', 'riddleContract'],
-  components: {AeButton},
+  components: {AeLabel, AeButton},
   data () {
     return {
       answer: null
