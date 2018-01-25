@@ -116,7 +116,6 @@ export default {
       }
     },
     hashedAnswer () {
-      console.log('calc')
       return this.answer && utils.sha3(this.answer)
     }
   },
@@ -155,7 +154,6 @@ export default {
       this.reward = newVal
     },
     timeOutReload () {
-      console.log('timeoutreload')
       setTimeout(() => {
         this.getAllRiddles()
       }, 3000)
@@ -164,7 +162,6 @@ export default {
       this.loading = loading
     },
     askRiddle () {
-      console.log('askRiddle', this.riddleContract)
       this.loading = true
       const qa = utils.soliditySha3(this.question, this.hashedAnswer)
       return this.riddleContract.getRiddleAtHash(qa).then((riddle) => {
@@ -186,16 +183,17 @@ export default {
       this.riddles = []
       this.loading = true
       return this.riddleContract.getRiddleCount().then((count) => {
-        return this.getRiddleAtKey(0, count)
+        console.log(count)
+        return count && this.getRiddleAtKey(0, count)
       })
     },
     getRiddleAtKey (key, total) {
-      if (key >= total) {
+      if (key >= total || !total) {
         this.loading = false
       } else {
         return this.riddleContract.getRiddleAtKey(key).then((riddle) => {
-          this.riddles.push(riddle)
-          return this.getRiddleAtKey(key + 1, total)
+          riddle && this.riddles.push(riddle)
+          return riddle && this.getRiddleAtKey(key + 1, total)
         })
       }
     },

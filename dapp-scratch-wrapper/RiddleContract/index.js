@@ -1,6 +1,6 @@
 
 import RiddleContractArtifacts from '../../build/contracts/RiddleContract.json'
-import ERC20 from '../../build/contracts/ERC20.json'
+import AeternityToken from '../../build/contracts/AeternityToken.json'
 
 import Web3 from 'web3'
 const BN = Web3.utils.BN
@@ -20,8 +20,9 @@ class RiddleContract {
     this.allowed = 0
     this.balance = 0
     this.balanceAE = 0
-    this.address = '0x4cd493f13b922415ee21c03767d2ae1e07344c4c'
-
+    this.address = null
+    this.RiddleContract = null
+    this.AeternityToken = null
     this.AEAddresses = {
       5777: '0x6f1ddb36567854845e010ea0c5b9cb49d9b23c2e',
       42: '0x35d8830ea35e6Df033eEdb6d5045334A4e34f9f9',
@@ -121,6 +122,7 @@ class RiddleContract {
   }
 
   checkNetwork () {
+    console.log('check network')
     return new Promise((resolve, reject) => {
       if (!global.web3) return reject()
       global.web3.eth.net.getId((err, netId) => {
@@ -129,9 +131,11 @@ class RiddleContract {
           reject(new Error(err))
         } else if (this.network !== netId) {
           this.network = netId
-          this.deployContract().then(() => {
+          return this.deployContract().then(() => {
             this.trigger('networkChange');
             resolve()
+          }).catch((err) => {
+            console.log(err)
           })
         }
       })
@@ -141,19 +145,27 @@ class RiddleContract {
   }
 
   deployContract () {
+    console.log('????')
     return new Promise ((resolve, reject) => {
       if (!this.address && this.network && RiddleContractArtifacts.networks[this.network]) {
         this.address = RiddleContractArtifacts.networks[this.network].address
       } else if (!this.address) {
          return reject(new Error('Please provide a contract address'))
       }
-      this.RiddleContract = new global.web3.eth.Contract(RiddleContractArtifacts.abi, this.address)
-      this.ERC20 = new global.web3.eth.Contract(ERC20.abi, this.AEAddresses[this.network])
-      resolve()
+      try {
+        this.RiddleContract = new global.web3.eth.Contract(RiddleContractArtifacts.abi, this.address)
+        console.log(this.AEAddresses[this.network], this.AEAddresses, this.network)
+        this.AeternityToken = new global.web3.eth.Contract(AeternityToken.abi, this.AEAddresses[this.network])
+        resolve()
+      } catch (err) {
+        reject(err)
+        console.log(err)
+      }
     })
   }
 
   checkAccount () {
+    console.log('checkAccount')
     return global.web3.eth.getAccounts((error, accounts) => {
       if (error) throw new Error(error)
       if (accounts.length && this.account !== accounts[0]) {
@@ -165,20 +177,22 @@ class RiddleContract {
         this.account = null
         this.trigger('accountChange')
       }
-      if (this.ERC20) {
-        return this.ERC20.methods.balanceOf(this.account).call().then((balance) => {
-          console.log(balance)
+      if (this.AeternityToken && this.account) {
+        return this.AeternityToken.methods.balanceOf(this.account).call().then((balance) => {
           if (balance !== this.balanceAE) {
             this.balanceAE = balance
             this.trigger('balanceChange')
           }
-          return this.ERC20.methods.allowance(this.account, this.address).call().then((allowed) => {
-            console.log(allowed)
+          return this.AeternityToken.methods.allowance(this.account, this.address).call().then((allowed) => {
             if (allowed !== this.allowed) {
               this.allowed = allowed
               this.trigger('allowedChange')
             }
+          }).catch((err) => {
+            console.log(err)
           })
+        }).catch((err) => {
+          console.log(err)
         })
       }
     })
@@ -262,7 +276,7 @@ class RiddleContract {
    approve (amount) {
     amount = Web3.utils.toWei(Web3.utils.toBN(amount))
     if (!this.account) return new Error('Unlock Wallet')
-    return this.ERC20.methods.approve(this.address, amount).send({from: this.account})
+    return this.AeternityToken.methods.approve(this.address, amount).send({from: this.account})
     .on('transactionHash', (hash) => {
       console.log(hash)
       this.loading = true
