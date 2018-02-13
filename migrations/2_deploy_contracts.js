@@ -20,7 +20,7 @@ module.exports = async function(deployer, helper, accounts) {
     }
   } else {
     try {
-      await deployer.deploy(RiddleContract, AEAddresses[helper])      
+      await deployer.deploy(RiddleContract, AEAddresses[helper])
     } catch (error) {
       console.log(error)
     }
