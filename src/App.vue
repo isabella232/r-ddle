@@ -4,7 +4,7 @@
       <ae-header name="Ræddle">
         <span style="color: white">
           <a :href="etherscan" target="_blank">
-            <ae-identity-avatar :address="'account'"></ae-identity-avatar>
+            <ae-identity-avatar :address="account"></ae-identity-avatar>
           </a>
         </span>
       </ae-header>
@@ -48,17 +48,17 @@
           <ae-label :help-text="rewardText" help-type="danger">
              Reward:
           </ae-label>
-          <ae-amount-input 
+          <ae-amount-input
           :max="allowed" :step="1" :value="reward" @input='changeInput' />
           <ae-button id="newQSubmit" type="dramatic">Submit</ae-button>
         </form>
-        <riddle 
-        :riddle-contract="riddleContract" 
-        :key="i" 
-        @reload="timeOutReload()" 
-        @loading="loadEvent()" 
-        :riddle="riddle" 
-        v-for="riddle, i in riddles" 
+        <riddle
+        :riddle-contract="riddleContract"
+        :key="i"
+        @reload="timeOutReload()"
+        @loading="loadEvent()"
+        :riddle="riddle"
+        v-for="riddle, i in riddles"
         />
         <div v-if="!riddles.length">Sorry, no riddles yet...</div>
       </div>
